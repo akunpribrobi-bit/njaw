@@ -1,6 +1,6 @@
 const fs = require('fs');
 const readline = require('readline');
-const https = require('https'); // Ditambahkan untuk fetch data OSINT dari internet
+const https = require('https'); 
 
 const inputTerminal = fs.createReadStream('/dev/tty');
 const outputTerminal = fs.createWriteStream('/dev/tty');
@@ -10,7 +10,6 @@ const rl = readline.createInterface({
     output: outputTerminal
 });
 
-// Status menu aktif: 'MENU', 'KALKULATOR', 'HITUNG_BARIS', 'OSINT_MENU', 'OSINT_IP', 'OSINT_USER'
 let statusSekarang = 'MENU'; 
 
 function cetak(teks) {
@@ -27,10 +26,10 @@ function tampilkanMenu() {
     cetak("\x1b[36m====================================================\x1b[0m");
     cetak("\x1b[36m               VCX TERMUX MULTI-TOOLS               \x1b[0m");
     cetak("\x1b[36m====================================================\x1b[0m");
-    cetak(" [1] Kalkulator Sederhana");
-    cetak(" [2] Auto Hitung Baris Custom (1 sampai N)");
-    cetak(" [3] 🔍 Tools OSINT (IP Lookup & Username Tracker)");
-    cetak(" [4] Keluar");
+    cetak(" Kalkulator Sederhana");
+    cetak(" Auto Hitung Baris Custom (1 sampai N)");
+    cetak(" 🔍 Tools OSINT (IP Lookup & Username Tracker)");
+    cetak(" Keluar");
     cetak("----------------------------------------------------");
     cetak("\x1b[33m 💡 Command Global Kapan Saja:\x1b[0m");
     cetak("    \x1b[35m/vcxmenu\x1b[0m = Kembali ke menu utama");
@@ -56,21 +55,22 @@ function jalankanHitungBaris() {
     rl.prompt();
 }
 
-// Sub-fitur 3: Menu Utama OSINT
 function jalankanOsintMenu() {
     statusSekarang = 'OSINT_MENU';
     cetak("\n\x1b[35m=== [MENU 3] TOOLS OSINT ===\x1b[0m");
-    cetak(" [1] 🌐 IP Geolocation Lookup");
-    cetak(" [2] 👤 Username Target Tracker");
-    cetak(" [3] ⬅️ Kembali ke Menu Utama");
+    cetak(" 🌐 IP Geolocation Lookup");
+    cetak(" 👤 Username Target Tracker");
+    cetak(" ⬅️ Kembali ke Menu Utama");
     rl.setPrompt('\n🔎 Pilih sub-menu OSINT: ');
     rl.prompt();
 }
 
-// Fungsi bantu untuk OSINT IP Lookup
+// Sub-OSINT IP Lookup menggunakan server ip-api.com (Lebih stabil)
 function osintIpLookup(ip) {
     cetak(`\n⏳ Sedang melacak IP: ${ip || 'IP Kamu'}...`);
-    const url = `https://ipapi.co{ip}/json/`;
+    
+    // Jika kosong, server ip-api.com otomatis mendeteksi IP saat ini lewat endpoint /json
+    const url = ip ? `https://ip-api.com{ip}` : `https://ip-api.com`;
 
     https.get(url, (res) => {
         let data = '';
@@ -78,17 +78,17 @@ function osintIpLookup(ip) {
         res.on('end', () => {
             try {
                 const info = JSON.parse(data);
-                if (info.error) {
-                    cetak("\x1b[31m❌ IP tidak valid atau tidak ditemukan!\x1b[0m\n");
+                if (info.status === "fail") {
+                    cetak(`\x1b[31m❌ Gagal: ${info.message || 'IP tidak valid!'}\x1b[0m\n`);
                 } else {
-                    cetak("\n\x1b[32m=== 📊 HASIL PELACAKAN IP ===\x1b[0m");
-                    cetak(`📍 IP Target : ${info.ip}`);
-                    cetak(`🌍 Negara    : ${info.country_name} (${info.country_code})`);
-                    cetak(`🏙️ Kota      : ${info.city}, ${info.region}`);
-                    cetak(`🏢 Provider  : ${info.org} (ASN: ${info.asn})`);
-                    cetak(`📮 Kode Pos  : ${info.postal}`);
-                    cetak(`🗺️ Koordinat : Lat: ${info.latitude}, Lon: ${info.longitude}`);
-                    cetak("=============================\n");
+                    cetak("\n\x1b[32m=== 📊 HASIL PELACAKAN IP (BACKUP SERVER) ===\x1b[0m");
+                    cetak(`📍 IP Target : ${info.query}`);
+                    cetak(`🌍 Negara    : ${info.country} (${info.countryCode})`);
+                    cetak(`🏙️ Kota      : ${info.city}, ${info.regionName}`);
+                    cetak(`🏢 Provider  : ${info.isp} (${info.as})`);
+                    cetak(`📮 Kode Pos  : ${info.zip || 'Tidak terdeteksi'}`);
+                    cetak(`🗺️ Koordinat : Lat: ${info.lat}, Lon: ${info.lon}`);
+                    cetak("============================================\n");
                 }
             } catch (e) {
                 cetak("\x1b[31m❌ Gagal memproses data dari server.\x1b[0m\n");
@@ -96,18 +96,19 @@ function osintIpLookup(ip) {
             jalankanOsintMenu();
         });
     }).on('error', () => {
-        cetak("\x1b[31m❌ Koneksi gagal! Periksa internet Termux kamu.\x1b[0m\n");
+        cetak("\x1b[31m❌ Koneksi gagal! Periksa koneksi internet Termux kamu.\x1b[0m\n");
         jalankanOsintMenu();
     });
 }
 
-// Fungsi bantu untuk OSINT Username Tracker
+// Sub-OSINT Username Tracker (Daftar media sosial ditambah)
 function osintUsernameTracker(username) {
     cetak(`\n⏳ Memindai username [ ${username} ] di berbagai platform...`);
     
-    // Daftar situs yang akan dicek
     const sites = [
         { name: 'GitHub', url: `https://github.com{username}` },
+        { name: 'Instagram', url: `https://instagram.com{username}/` },
+        { name: 'TikTok', url: `https://tiktok.com{username}` },
         { name: 'Pinterest', url: `https://pinterest.com{username}/` },
         { name: 'Linktree', url: `https://linktr.ee{username}` }
     ];
@@ -117,8 +118,8 @@ function osintUsernameTracker(username) {
 
     sites.forEach((site) => {
         https.get(site.url, (res) => {
-            // Jika status code 200 artinya akun ada/ditemukan
-            if (res.statusCode === 200) {
+            // Status 200 atau 302/301 biasanya berarti profil tersebut ada
+            if (res.statusCode === 200 || res.statusCode === 301 || res.statusCode === 302) {
                 cetak(`🟢 [ADA] ${site.name}: ${site.url}`);
             } else {
                 cetak(`🔴 [TIDAK ADA] ${site.name}`);
@@ -139,7 +140,6 @@ function osintUsernameTracker(username) {
     });
 }
 
-// Handler utama membaca input
 rl.on('line', (line) => {
     const input = line.trim();
 
@@ -156,7 +156,6 @@ rl.on('line', (line) => {
         return;
     }
 
-    // LOGIKA HANDLING BERDASARKAN STATUS
     if (statusSekarang === 'MENU') {
         if (input === '1') jalankanKalkulator();
         else if (input === '2') jalankanHitungBaris();
@@ -197,11 +196,10 @@ rl.on('line', (line) => {
         rl.prompt();
     } 
     
-    // Handler Menu Utama OSINT
     else if (statusSekarang === 'OSINT_MENU') {
         if (input === '1') {
             statusSekarang = 'OSINT_IP';
-            cetak("\n🌐 [IP LOOKUP] Masukkan alamat IP Target (atau kosongkan untuk cek IP kamu sendiri):");
+            cetak("\n🌐 [IP LOOKUP] Masukkan alamat IP Target (atau kosongkan langsung Enter untuk cek IP kamu):");
             rl.setPrompt('🎯 IP Target: ');
             rl.prompt();
         } else if (input === '2') {
@@ -217,12 +215,10 @@ rl.on('line', (line) => {
         }
     } 
     
-    // Handler Input Sub-OSINT IP
     else if (statusSekarang === 'OSINT_IP') {
         osintIpLookup(input);
     } 
     
-    // Handler Input Sub-OSINT Username
     else if (statusSekarang === 'OSINT_USER') {
         if (!input) {
             cetak("\x1b[31m⚠️ Username tidak boleh kosong!\x1b[0m");
@@ -234,4 +230,4 @@ rl.on('line', (line) => {
 });
 
 tampilkanMenu();
-  
+    
