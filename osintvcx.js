@@ -1,6 +1,7 @@
 const fs = require('fs');
 const readline = require('readline');
-const https = require('https'); 
+const http = require('http');   // Menggunakan http biasa untuk bypass block API gratis
+const https = require('https'); // Tetap digunakan untuk tracker username sosmed
 
 const inputTerminal = fs.createReadStream('/dev/tty');
 const outputTerminal = fs.createWriteStream('/dev/tty');
@@ -65,14 +66,14 @@ function jalankanOsintMenu() {
     rl.prompt();
 }
 
-// Sub-OSINT IP Lookup menggunakan server ip-api.com (Lebih stabil)
+// Sub-OSINT IP Lookup fix menggunakan HTTP biasa (wajib untuk ip-api free)
 function osintIpLookup(ip) {
     cetak(`\n⏳ Sedang melacak IP: ${ip || 'IP Kamu'}...`);
     
-    // Jika kosong, server ip-api.com otomatis mendeteksi IP saat ini lewat endpoint /json
-    const url = ip ? `https://ip-api.com{ip}` : `https://ip-api.com`;
+    // Protokol diubah ke http:// untuk menghindari kendala SSL rate limit gratisan
+    const url = ip ? `http://ip-api.com{ip}` : `http://ip-api.com/json/`;
 
-    https.get(url, (res) => {
+    http.get(url, (res) => {
         let data = '';
         res.on('data', (chunk) => { data += chunk; });
         res.on('end', () => {
@@ -81,7 +82,7 @@ function osintIpLookup(ip) {
                 if (info.status === "fail") {
                     cetak(`\x1b[31m❌ Gagal: ${info.message || 'IP tidak valid!'}\x1b[0m\n`);
                 } else {
-                    cetak("\n\x1b[32m=== 📊 HASIL PELACAKAN IP (BACKUP SERVER) ===\x1b[0m");
+                    cetak("\n\x1b[32m=== 📊 HASIL PELACAKAN IP ===\x1b[0m");
                     cetak(`📍 IP Target : ${info.query}`);
                     cetak(`🌍 Negara    : ${info.country} (${info.countryCode})`);
                     cetak(`🏙️ Kota      : ${info.city}, ${info.regionName}`);
@@ -101,7 +102,6 @@ function osintIpLookup(ip) {
     });
 }
 
-// Sub-OSINT Username Tracker (Daftar media sosial ditambah)
 function osintUsernameTracker(username) {
     cetak(`\n⏳ Memindai username [ ${username} ] di berbagai platform...`);
     
@@ -118,7 +118,6 @@ function osintUsernameTracker(username) {
 
     sites.forEach((site) => {
         https.get(site.url, (res) => {
-            // Status 200 atau 302/301 biasanya berarti profil tersebut ada
             if (res.statusCode === 200 || res.statusCode === 301 || res.statusCode === 302) {
                 cetak(`🟢 [ADA] ${site.name}: ${site.url}`);
             } else {
@@ -176,10 +175,10 @@ rl.on('line', (line) => {
             cetak("\x1b[31m⚠️ Format salah! Contoh: 10 + 5\x1b[0m\n");
             rl.prompt(); return;
         }
-        const a = parseFloat(bagian[0]); const op = bagian[1]; const b = parseFloat(bagian[2]);
+        const a = parseFloat(bagian); const op = bagian[1]; const b = parseFloat(bagian[2]);
         let hasil = 0;
         if (op === '+') hasil = a + b;
-        else if (op === '-') hasil = a - b;
+        else if (op === '-') Street = a - b;
         else if (op === '*' || op === 'x') hasil = a * b;
         else if (op === '/') hasil = a / b;
         cetak(`\x1b[32m✅ Hasil: ${hasil}\x1b[0m\n`);
@@ -199,7 +198,7 @@ rl.on('line', (line) => {
     else if (statusSekarang === 'OSINT_MENU') {
         if (input === '1') {
             statusSekarang = 'OSINT_IP';
-            cetak("\n🌐 [IP LOOKUP] Masukkan alamat IP Target (atau kosongkan langsung Enter untuk cek IP kamu):");
+            cetak("\n🌐 [IP LOOKUP] Masukkan alamat IP Target (atau langsung Enter untuk cek IP HP ini):");
             rl.setPrompt('🎯 IP Target: ');
             rl.prompt();
         } else if (input === '2') {
@@ -230,4 +229,3 @@ rl.on('line', (line) => {
 });
 
 tampilkanMenu();
-    
